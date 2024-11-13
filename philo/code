@@ -1,0 +1,521 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   cleans.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/11/07 14:49:21 by mblanc            #+#    #+#             */
+/*   Updated: 2024/11/07 14:49:38 by mblanc           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "philosophers.h"
+
+void	free_philosophers(t_philosophers *head, int count)
+{
+	t_philosophers	*current;
+	t_philosophers	*next;
+	int				i;
+
+	current = head;
+	i = 0;
+	while (current && i < count)
+	{
+		next = current->next;
+		pthread_mutex_destroy(&current->state_mutex);
+		free(current);
+		current = next;
+		i++;
+	}
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   inits.c                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/10/17 19:09:52 by mblanc            #+#    #+#             */
+/*   Updated: 2024/11/11 12:09:39 by mblanc           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "philosophers.h"
+#include <pthread.h>
+#include <stdlib.h>
+#include <sys/time.h>
+
+static pthread_mutex_t	*init_mutex_fork(int number_of_philosophers)
+{
+	pthread_mutex_t	*forks;
+	int				i;
+
+	forks = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t)
+			* number_of_philosophers);
+	if (!forks)
+		return (NULL);
+	i = 0;
+	while (i < number_of_philosophers)
+	{
+		if (pthread_mutex_init(&forks[i], NULL) != 0)
+		{
+			while (--i >= 0)
+				pthread_mutex_destroy(&forks[i]);
+			free(forks);
+			return (NULL);
+		}
+		i++;
+	}
+	return (forks);
+}
+
+static int	parse_int(const char *str)
+{
+	int	value;
+
+	value = 0;
+	while (*str)
+	{
+		if (*str < '0' || *str > '9')
+			return (-1);
+		value = value * 10 + (*str - '0');
+		str++;
+	}
+	return (value);
+}
+
+static t_data	*init_data(int argc, char **argv)
+{
+	t_data	*data;
+
+	if (argc != 5 && argc != 6)
+		return (NULL);
+	data = malloc(sizeof(t_data));
+	if (!data)
+		return (NULL);
+	data->number_of_philosophers = parse_int(argv[1]);
+	data->time_to_die = parse_int(argv[2]);
+	data->time_to_eat = parse_int(argv[3]);
+	data->time_to_sleep = parse_int(argv[4]);
+	data->number_of_time_each_philosopher_must_eat = -1;
+	if (argc == 6)
+		data->number_of_time_each_philosopher_must_eat = parse_int(argv[5]);
+	data->stop_simulation = 0;
+	data->philosophers = NULL;
+	data->forks = NULL;
+	if (data->number_of_philosophers <= 0 || data->time_to_die <= 0
+		|| data->time_to_eat <= 0 || data->time_to_sleep <= 0 || (argc == 6
+			&& data->number_of_time_each_philosopher_must_eat <= 0))
+		return (free(data), NULL);
+	return (data);
+}
+
+static t_philosophers	*create_philosopher(int id, t_data *data)
+{
+	t_philosophers	*philo;
+
+	philo = (t_philosophers *)malloc(sizeof(t_philosophers));
+	if (!philo)
+		return (NULL);
+	philo->id = id;
+	philo->what_doing = 0;
+	philo->number_of_time_he_eat = 0;
+	philo->last_meal_time = data->start_time;
+	philo->left_fork = &data->forks[id - 1];
+	philo->right_fork = &data->forks[id % data->number_of_philosophers];
+	if (pthread_mutex_init(&philo->state_mutex, NULL) != 0)
+		return (free(philo), NULL);
+	philo->next = NULL;
+	philo->prev = NULL;
+	philo->data = data;
+	return (philo);
+}
+
+static t_philosophers	*init_philosophers(t_data *data)
+{
+	t_philosophers	*head;
+	t_philosophers	*current;
+	int				i;
+
+	head = create_philosopher(1, data);
+	if (!head)
+		return (NULL);
+	current = head;
+	i = 1;
+	while (i < data->number_of_philosophers)
+	{
+		current->next = create_philosopher(i + 1, data);
+		if (!current->next)
+		{
+			free_philosophers(head, i);
+			return (NULL);
+		}
+		current->next->prev = current;
+		current = current->next;
+		i++;
+	}
+	current->next = head;
+	head->prev = current;
+	data->philosophers = head;
+	return (head);
+}
+
+int	create_philosopher_threads(t_data *data)
+{
+	t_philosophers	*philo;
+	t_philosophers	*current_philo;
+	int				i;
+
+	data->threads = malloc(sizeof(pthread_t) * data->number_of_philosophers);
+	if (!data->threads)
+		return (1);
+	philo = data->philosophers;
+	i = -1;
+	while (++i < data->number_of_philosophers)
+	{
+		current_philo = philo;
+		if (pthread_create(&data->threads[i], NULL, philosopher_routine,
+				current_philo) != 0)
+		{
+			printf("Error: Failed to create thread\n");
+			while (--i >= 0)
+				pthread_join(data->threads[i], NULL);
+			return (free(data->threads), 1);
+		}
+		philo = philo->next;
+	}
+	verif_threads(data);
+	return (0);
+}
+
+t_data	*init_structures(int argc, char **argv)
+{
+	t_data	*data;
+
+	data = init_data(argc, argv);
+	if (!data)
+		return (printf("Error: Initialization failed\n"), NULL);
+	data->forks = init_mutex_fork(data->number_of_philosophers);
+	if (!data->forks)
+		return (free(data), printf("Error: Forks initialization failed\n"),
+			NULL);
+	data->start_time = get_timestamp();
+	if (!init_philosophers(data))
+		return (free(data), printf("Philosophers initialization failed\n"),
+			NULL);
+	if (pthread_mutex_init(&data->print_mutex, NULL) != 0)
+		return (free(data), printf("Print mutex initialization failed\n"),
+			NULL);
+	if (pthread_mutex_init(&data->stop_mutex, NULL) != 0)
+		return (free(data), printf("Stop mutex initialization failed\n"), NULL);
+	if (create_philosopher_threads(data) != 0)
+		return (free(data), printf("Could not create philosopher threads\n"),
+			NULL);
+	return (data);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   philosopher_routine.c                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
+/*   Updated: 2024/11/13 17:46:00 by mblanc           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "philosophers.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <sys/time.h>
+#include <unistd.h>
+
+long	get_timestamp(void)
+{
+	struct timeval	tv;
+
+	gettimeofday(&tv, NULL);
+	return ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
+}
+
+void	ft_usleep(int duration)
+{
+	long	start_time;
+	long	current_time;
+
+	start_time = get_timestamp();
+	while ((current_time = get_timestamp() - start_time) < duration)
+	{
+		usleep(100);
+	}
+}
+
+void	print_status(t_data *data, t_philosophers *philo, char *status)
+{
+	pthread_mutex_lock(&data->print_mutex);
+	if (!data->stop_simulation)
+		printf("%ld %d %s\n", get_timestamp() - data->start_time, philo->id,
+			status);
+	pthread_mutex_unlock(&data->print_mutex);
+}
+
+void	take_forks(t_data *data, t_philosophers *philo)
+{
+	if (data->number_of_philosophers == 1)
+	{
+		pthread_mutex_lock(philo->left_fork);
+		print_status(data, philo, "has taken a fork");
+		ft_usleep(data->time_to_die);
+		pthread_mutex_unlock(philo->left_fork);
+		print_status(data, philo, "died");
+		data->stop_simulation = 1;
+		return ;
+	}
+	if (philo->id % 2 == 0)
+	{
+		pthread_mutex_lock(philo->left_fork);
+		print_status(data, philo, "has taken a fork");
+		pthread_mutex_lock(philo->right_fork);
+		print_status(data, philo, "has taken a fork");
+	}
+	else
+	{
+		pthread_mutex_lock(philo->right_fork);
+		print_status(data, philo, "has taken a fork");
+		pthread_mutex_lock(philo->left_fork);
+		print_status(data, philo, "has taken a fork");
+	}
+}
+
+// void	take_forks(t_data *data, t_philosophers *philo)
+// {
+// 	pthread_mutex_lock(philo->left_fork);
+// 	print_status(data, philo, "has taken a fork");
+// 	if (data->number_of_philosophers == 1)
+// 		return ;
+// 	pthread_mutex_lock(philo->right_fork);
+// 	print_status(data, philo, "has taken a fork");
+// }
+
+void	release_forks(t_philosophers *philo)
+{
+	pthread_mutex_unlock(philo->left_fork);
+	pthread_mutex_unlock(philo->right_fork);
+}
+
+void	eat(t_data *data, t_philosophers *philo)
+{
+	take_forks(data, philo);
+	if (data->number_of_philosophers == 1)
+		return ;
+	pthread_mutex_lock(&philo->state_mutex);
+	philo->last_meal_time = get_timestamp();
+	philo->number_of_time_he_eat++;
+	print_status(data, philo, "is eating");
+	pthread_mutex_unlock(&philo->state_mutex);
+	ft_usleep(data->time_to_eat);
+	release_forks(philo);
+}
+
+
+void	*philosopher_routine(void *arg)
+{
+	t_data			*data;
+	t_philosophers	*philo;
+
+	philo = (t_philosophers *)arg;
+	data = philo->data;
+	if (philo->id % 2 == 0 && data->number_of_philosophers != 1)
+		ft_usleep(10);
+	while (!get_stop_simulation(data))
+	{
+		eat(data, philo);
+		if (data->stop_simulation == 1)
+			break ;
+		print_status(data, philo, "is sleeping");
+		if (data->stop_simulation == 1)
+			break ;
+		ft_usleep(data->time_to_sleep);
+		print_status(data, philo, "is thinking");
+		if (data->stop_simulation == 1)
+			break ;
+	}
+	return (NULL);
+}
+
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   stop_simulation.c                                  :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/11/11 12:02:57 by mblanc            #+#    #+#             */
+/*   Updated: 2024/11/13 17:40:58 by mblanc           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "philosophers.h"
+
+int	get_stop_simulation(t_data *data)
+{
+	int	stop;
+
+	pthread_mutex_lock(&data->stop_mutex);
+	stop = data->stop_simulation;
+	pthread_mutex_unlock(&data->stop_mutex);
+	return (stop);
+}
+
+void	set_stop_simulation(t_data *data, int value)
+{
+	pthread_mutex_lock(&data->stop_mutex);
+	data->stop_simulation = value;
+	pthread_mutex_unlock(&data->stop_mutex);
+}
+
+int	verif_all_philosophers_eat(t_data *data)
+{
+	t_philosophers	*philo;
+	int				i;
+
+	i = 0;
+	philo = data->philosophers;
+	while (i < data->number_of_philosophers)
+	{
+		pthread_mutex_lock(&philo->state_mutex);
+		if (philo->number_of_time_he_eat < data->number_of_time_each_philosopher_must_eat)
+		{
+			pthread_mutex_unlock(&philo->state_mutex);
+			return (0);
+		}
+		pthread_mutex_unlock(&philo->state_mutex);
+		philo = philo->next;
+		i++;
+	}
+	pthread_mutex_lock(&data->stop_mutex);
+	data->stop_simulation = 1;
+	pthread_mutex_unlock(&data->stop_mutex);
+	return (1);
+}
+
+// int	verifications_philos(t_philosophers *philo, t_data *data)
+// {
+// 	int	is_dead;
+
+// 	pthread_mutex_lock(&philo->state_mutex);
+// 	is_dead = (get_timestamp() - philo->last_meal_time >= data->time_to_die);
+// 	pthread_mutex_unlock(&philo->state_mutex);
+// 	if (is_dead)
+// 	{
+// 		pthread_mutex_lock(&data->print_mutex);
+// 		if (!data->stop_simulation)
+// 		{
+// 			print_status(data, philo, "died");
+// 			pthread_mutex_lock(&data->stop_mutex);
+// 			data->stop_simulation = 1;
+// 			pthread_mutex_unlock(&data->stop_mutex);
+// 		}
+// 		pthread_mutex_unlock(&data->print_mutex);
+// 		return (1);
+// 	}
+// 	if (data->number_of_time_each_philosopher_must_eat == -1)
+// 		return (0);
+// 	return (verif_all_philosophers_eat(data));
+// }
+
+void	verif_threads(t_data *data)
+{
+	int				i;
+	t_philosophers	*philo;
+	long			time_diff;
+
+	while (!get_stop_simulation(data))
+	{
+		philo = data->philosophers;
+		i = 0;
+		while (i < data->number_of_philosophers)
+		{
+			pthread_mutex_lock(&philo->state_mutex);
+			time_diff = get_timestamp() - philo->last_meal_time;
+			if (time_diff >= data->time_to_die && !get_stop_simulation(data))
+			{
+				print_status(data, philo, "died");
+				set_stop_simulation(data, 1);
+				pthread_mutex_unlock(&philo->state_mutex);
+				return ;
+			}
+			pthread_mutex_unlock(&philo->state_mutex);
+			philo = philo->next;
+			i++;
+		}
+		ft_usleep(50); // Réduire le délai de sommeil pour une vérification plus fréquente
+	}
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/11/05 01:05:02 by mblanc            #+#    #+#             */
+/*   Updated: 2024/11/11 11:34:46 by mblanc           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "philosophers.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int	cleanup(t_data *data)
+{
+	int				i;
+	t_philosophers	*philo;
+	t_philosophers	*next_philo;
+
+	if (!data)
+		return (1);
+	i = 0;
+	while (i < data->number_of_philosophers)
+		pthread_join(data->threads[i++], NULL);
+	free(data->threads);
+	pthread_mutex_destroy(&data->print_mutex);
+	i = 0;
+	while (i < data->number_of_philosophers)
+		pthread_mutex_destroy(&data->forks[i++]);
+	free(data->forks);
+	philo = data->philosophers;
+	i = 0;
+	while (i < data->number_of_philosophers)
+	{
+		next_philo = philo->next;
+		pthread_mutex_destroy(&philo->state_mutex);
+		free(philo);
+		philo = next_philo;
+		i++;
+	}
+	free(data);
+	return (0);
+}
+
+// Arg1 : number_of_philosophers
+// Arg2 : time_to_die
+// Arg3 : time_to_eat
+// Arg4 : time_to_sleep
+// Arg5 (optinal) : number_of_times_each_philosopher_must_eat
+int	main(int argc, char **argv)
+{
+	t_data			*data;
+
+	if (argc != 5 && argc != 6)
+		return (printf("Wrong number of arguments\n"));
+	data = init_structures(argc, argv);
+	if (!data)
+		return (cleanup(data));
+	return (cleanup(data));
+}
