@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/17 19:09:52 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/11 12:09:39 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 02:57:01 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -173,6 +173,8 @@ t_data	*init_structures(int argc, char **argv)
 	if (!init_philosophers(data))
 		return (free(data), printf("Philosophers initialization failed\n"),
 			NULL);
+	if (pthread_mutex_init(&data->fork_mutex, NULL) != 0)
+		return (free(data), printf("Fork mutex initialization failed\n"), NULL);
 	if (pthread_mutex_init(&data->print_mutex, NULL) != 0)
 		return (free(data), printf("Print mutex initialization failed\n"),
 			NULL);

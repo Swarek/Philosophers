@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/05 01:05:02 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/11 11:34:46 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 02:57:29 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ int	cleanup(t_data *data)
 		pthread_join(data->threads[i++], NULL);
 	free(data->threads);
 	pthread_mutex_destroy(&data->print_mutex);
+	pthread_mutex_destroy(&data->fork_mutex);
 	i = 0;
 	while (i < data->number_of_philosophers)
 		pthread_mutex_destroy(&data->forks[i++]);

@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/11 12:02:57 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/13 17:40:58 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 07:54:41 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,6 +93,7 @@ void	verif_threads(t_data *data)
 		{
 			pthread_mutex_lock(&philo->state_mutex);
 			time_diff = get_timestamp() - philo->last_meal_time;
+			have_they_all_eat_necessary(data);
 			if (time_diff >= data->time_to_die && !get_stop_simulation(data))
 			{
 				print_status(data, philo, "died");
@@ -104,6 +105,5 @@ void	verif_threads(t_data *data)
 			philo = philo->next;
 			i++;
 		}
-		ft_usleep(50); // Réduire le délai de sommeil pour une vérification plus fréquente
 	}
 }

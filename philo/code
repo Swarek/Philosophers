@@ -37,7 +37,7 @@ void	free_philosophers(t_philosophers *head, int count)
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/17 19:09:52 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/11 12:09:39 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 02:57:01 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -204,6 +204,8 @@ t_data	*init_structures(int argc, char **argv)
 	if (!init_philosophers(data))
 		return (free(data), printf("Philosophers initialization failed\n"),
 			NULL);
+	if (pthread_mutex_init(&data->fork_mutex, NULL) != 0)
+		return (free(data), printf("Fork mutex initialization failed\n"), NULL);
 	if (pthread_mutex_init(&data->print_mutex, NULL) != 0)
 		return (free(data), printf("Print mutex initialization failed\n"),
 			NULL);
@@ -222,15 +224,11 @@ t_data	*init_structures(int argc, char **argv)
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/13 17:46:00 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 08:04:08 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philosophers.h"
-#include <pthread.h>
-#include <stdio.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 long	get_timestamp(void)
 {
@@ -243,13 +241,10 @@ long	get_timestamp(void)
 void	ft_usleep(int duration)
 {
 	long	start_time;
-	long	current_time;
 
 	start_time = get_timestamp();
-	while ((current_time = get_timestamp() - start_time) < duration)
-	{
-		usleep(100);
-	}
+	while (get_timestamp() - start_time < duration)
+		usleep(50);
 }
 
 void	print_status(t_data *data, t_philosophers *philo, char *status)
@@ -261,43 +256,56 @@ void	print_status(t_data *data, t_philosophers *philo, char *status)
 	pthread_mutex_unlock(&data->print_mutex);
 }
 
+void	have_they_all_eat_necessary(t_data *data)
+{
+	t_philosophers	*memo;
+
+	memo = data->philosophers->next;
+	if (data->number_of_time_each_philosopher_must_eat == -1)
+		return ;
+	while (data->philosophers != memo)
+	{
+		if (memo->number_of_time_he_eat
+			< data->number_of_time_each_philosopher_must_eat)
+			return ;
+		memo = memo->next;
+	}
+	set_stop_simulation(data, 1);
+}
+
 void	take_forks(t_data *data, t_philosophers *philo)
 {
+	pthread_mutex_t	*first_fork;
+	pthread_mutex_t	*second_fork;
+	int				left_fork_id;
+	int				right_fork_id;
+
+	left_fork_id = philo->id - 1;
+	right_fork_id = philo->id % data->number_of_philosophers;
 	if (data->number_of_philosophers == 1)
 	{
 		pthread_mutex_lock(philo->left_fork);
 		print_status(data, philo, "has taken a fork");
-		ft_usleep(data->time_to_die);
-		pthread_mutex_unlock(philo->left_fork);
-		print_status(data, philo, "died");
-		data->stop_simulation = 1;
 		return ;
 	}
-	if (philo->id % 2 == 0)
+	if (philo->last_meal_time > philo->next->last_meal_time
+		|| philo->last_meal_time > philo->prev->last_meal_time)
+		ft_usleep(50);
+	if (left_fork_id < right_fork_id)
 	{
-		pthread_mutex_lock(philo->left_fork);
-		print_status(data, philo, "has taken a fork");
-		pthread_mutex_lock(philo->right_fork);
-		print_status(data, philo, "has taken a fork");
+		first_fork = philo->left_fork;
+		second_fork = philo->right_fork;
 	}
 	else
 	{
-		pthread_mutex_lock(philo->right_fork);
-		print_status(data, philo, "has taken a fork");
-		pthread_mutex_lock(philo->left_fork);
-		print_status(data, philo, "has taken a fork");
+		first_fork = philo->right_fork;
+		second_fork = philo->left_fork;
 	}
+	pthread_mutex_lock(first_fork);
+	print_status(data, philo, "has taken a fork");
+	pthread_mutex_lock(second_fork);
+	print_status(data, philo, "has taken a fork");
 }
-
-// void	take_forks(t_data *data, t_philosophers *philo)
-// {
-// 	pthread_mutex_lock(philo->left_fork);
-// 	print_status(data, philo, "has taken a fork");
-// 	if (data->number_of_philosophers == 1)
-// 		return ;
-// 	pthread_mutex_lock(philo->right_fork);
-// 	print_status(data, philo, "has taken a fork");
-// }
 
 void	release_forks(t_philosophers *philo)
 {
@@ -312,13 +320,12 @@ void	eat(t_data *data, t_philosophers *philo)
 		return ;
 	pthread_mutex_lock(&philo->state_mutex);
 	philo->last_meal_time = get_timestamp();
-	philo->number_of_time_he_eat++;
-	print_status(data, philo, "is eating");
 	pthread_mutex_unlock(&philo->state_mutex);
+	print_status(data, philo, "is eating");
 	ft_usleep(data->time_to_eat);
+	philo->number_of_time_he_eat++;
 	release_forks(philo);
 }
-
 
 void	*philosopher_routine(void *arg)
 {
@@ -327,24 +334,24 @@ void	*philosopher_routine(void *arg)
 
 	philo = (t_philosophers *)arg;
 	data = philo->data;
-	if (philo->id % 2 == 0 && data->number_of_philosophers != 1)
-		ft_usleep(10);
+	if (philo->id % 2 == 0)
+	{
+		print_status(data, philo, "is thinking");
+		ft_usleep(data->time_to_eat);
+	}
 	while (!get_stop_simulation(data))
 	{
 		eat(data, philo);
-		if (data->stop_simulation == 1)
+		if (get_stop_simulation(data))
 			break ;
 		print_status(data, philo, "is sleeping");
-		if (data->stop_simulation == 1)
-			break ;
 		ft_usleep(data->time_to_sleep);
-		print_status(data, philo, "is thinking");
-		if (data->stop_simulation == 1)
+		if (get_stop_simulation(data))
 			break ;
+		print_status(data, philo, "is thinking");
 	}
 	return (NULL);
 }
-
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -353,7 +360,7 @@ void	*philosopher_routine(void *arg)
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/11 12:02:57 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/13 17:40:58 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 07:54:41 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -440,6 +447,7 @@ void	verif_threads(t_data *data)
 		{
 			pthread_mutex_lock(&philo->state_mutex);
 			time_diff = get_timestamp() - philo->last_meal_time;
+			have_they_all_eat_necessary(data);
 			if (time_diff >= data->time_to_die && !get_stop_simulation(data))
 			{
 				print_status(data, philo, "died");
@@ -451,7 +459,6 @@ void	verif_threads(t_data *data)
 			philo = philo->next;
 			i++;
 		}
-		ft_usleep(50); // Réduire le délai de sommeil pour une vérification plus fréquente
 	}
 }
 /* ************************************************************************** */
@@ -462,7 +469,7 @@ void	verif_threads(t_data *data)
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/05 01:05:02 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/11 11:34:46 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 02:57:29 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -485,6 +492,7 @@ int	cleanup(t_data *data)
 		pthread_join(data->threads[i++], NULL);
 	free(data->threads);
 	pthread_mutex_destroy(&data->print_mutex);
+	pthread_mutex_destroy(&data->fork_mutex);
 	i = 0;
 	while (i < data->number_of_philosophers)
 		pthread_mutex_destroy(&data->forks[i++]);

@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/14 15:22:47 by dmathis           #+#    #+#             */
-/*   Updated: 2024/11/11 21:23:59 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 07:47:41 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 # include <pthread.h>
 # include <stdio.h>
 # include <stdlib.h>
+# include <sys/time.h>
+# include <unistd.h>
 
 # define EATING 0
 # define SLEEPING 1
@@ -36,6 +38,7 @@ typedef struct s_data
 	pthread_mutex_t			*forks;
 	pthread_mutex_t			print_mutex;
 	struct s_philosophers	*philosophers;
+	pthread_mutex_t 		fork_mutex;
 	pthread_t *threads; // Ajouté pour stocker les threads
 }							t_data;
 
@@ -72,5 +75,6 @@ int							verifications_philos(t_philosophers *philo,
 								t_data *data);
 int							get_stop_simulation(t_data *data);
 void						set_stop_simulation(t_data *data, int value);
+void						have_they_all_eat_necessary(t_data *data);
 
 #endif
