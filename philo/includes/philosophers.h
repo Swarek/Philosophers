@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/14 15:22:47 by dmathis           #+#    #+#             */
-/*   Updated: 2024/11/19 07:47:41 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 13:03:09 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,7 +59,7 @@ typedef struct s_philosophers
 }							t_philosophers;
 
 t_data						*init_structures(int argc, char **argv);
-void						ft_usleep(int duration);
+void	ft_usleep(t_data *data, int duration);
 void						print_status(t_data *data, t_philosophers *philo,
 								char *status);
 void						take_forks(t_data *data, t_philosophers *philo);
@@ -75,6 +75,7 @@ int							verifications_philos(t_philosophers *philo,
 								t_data *data);
 int							get_stop_simulation(t_data *data);
 void						set_stop_simulation(t_data *data, int value);
-void						have_they_all_eat_necessary(t_data *data);
+int	have_they_all_eat_necessary(t_data *data);
+void	*verif_eat_limit(void *arg);
 
 #endif
