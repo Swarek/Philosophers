@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/14 15:22:47 by dmathis           #+#    #+#             */
-/*   Updated: 2024/11/19 13:03:09 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/19 13:25:09 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,5 +77,6 @@ int							get_stop_simulation(t_data *data);
 void						set_stop_simulation(t_data *data, int value);
 int	have_they_all_eat_necessary(t_data *data);
 void	*verif_eat_limit(void *arg);
+long	get_last_meal(t_philosophers *philo);
 
 #endif

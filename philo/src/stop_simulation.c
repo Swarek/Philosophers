@@ -6,21 +6,11 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/11 12:02:57 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/19 13:09:59 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/20 14:55:36 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philosophers.h"
-
-int	get_stop_simulation(t_data *data)
-{
-	int	stop;
-
-	pthread_mutex_lock(&data->stop_mutex);
-	stop = data->stop_simulation;
-	pthread_mutex_unlock(&data->stop_mutex);
-	return (stop);
-}
 
 void	set_stop_simulation(t_data *data, int value)
 {
@@ -73,9 +63,9 @@ void	verif_threads(t_data *data)
 		i = 0;
 		while (i < data->number_of_philosophers)
 		{
+			verif_all_philosophers_eat(data);
 			pthread_mutex_lock(&philo->state_mutex);
 			time_diff = get_timestamp() - philo->last_meal_time;
-			// have_they_all_eat_necessary(data);
 			if (time_diff >= data->time_to_die && !get_stop_simulation(data))
 			{
 				print_status(data, philo, "died");

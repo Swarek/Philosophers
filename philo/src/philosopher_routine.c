@@ -6,19 +6,11 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/19 13:10:42 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/24 22:04:03 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philosophers.h"
-
-long	get_timestamp(void)
-{
-	struct timeval	tv;
-
-	gettimeofday(&tv, NULL);
-	return ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
-}
 
 void	ft_usleep(t_data *data, int duration)
 {
@@ -51,19 +43,20 @@ int	have_they_all_eat_necessary(t_data *data)
 		return (-1);
 	while (data->philosophers != memo)
 	{
+		pthread_mutex_lock(&memo->state_mutex);
 		if (memo->number_of_time_he_eat
 			< data->number_of_time_each_philosopher_must_eat)
-			return (0);
+			return (pthread_mutex_unlock(&memo->state_mutex), 0);
+		pthread_mutex_unlock(&memo->state_mutex);
 		memo = memo->next;
 	}
-	printf("Stop simulation ici\n");
 	set_stop_simulation(data, 1);
 	return (1);
 }
 
 void	*verif_eat_limit(void *arg)
 {
-	t_data			*data;
+	t_data	*data;
 
 	data = (t_data *)arg;
 	if (have_they_all_eat_necessary(data) == -1)
@@ -91,8 +84,8 @@ void	take_forks(t_data *data, t_philosophers *philo)
 		print_status(data, philo, "has taken a fork");
 		return ;
 	}
-	if (philo->last_meal_time > philo->next->last_meal_time
-		|| philo->last_meal_time > philo->prev->last_meal_time)
+	if (get_last_meal(philo) > get_last_meal(philo->next)
+		|| get_last_meal(philo) > get_last_meal(philo->prev))
 		ft_usleep(data, 50);
 	if (left_fork_id < right_fork_id)
 	{
@@ -115,11 +108,11 @@ void	release_forks(t_philosophers *philo)
 	pthread_mutex_unlock(philo->left_fork);
 	pthread_mutex_unlock(philo->right_fork);
 }
-
 void	eat(t_data *data, t_philosophers *philo)
 {
 	if (get_stop_simulation(data)
-		|| (philo->number_of_time_he_eat >= data->number_of_time_each_philosopher_must_eat && data->number_of_time_each_philosopher_must_eat != -1))
+		|| (philo->number_of_time_he_eat >= data->number_of_time_each_philosopher_must_eat
+			&& data->number_of_time_each_philosopher_must_eat != -1))
 		return ;
 	take_forks(data, philo);
 	if (data->number_of_philosophers == 1)
@@ -128,8 +121,15 @@ void	eat(t_data *data, t_philosophers *philo)
 	philo->last_meal_time = get_timestamp();
 	pthread_mutex_unlock(&philo->state_mutex);
 	print_status(data, philo, "is eating");
-	ft_usleep(data, data->time_to_eat);
+	pthread_mutex_lock(&philo->state_mutex);
 	philo->number_of_time_he_eat++;
+	pthread_mutex_unlock(&philo->state_mutex);
+	// if (verif_all_philosophers_eat(data))
+	// {
+	// 	pthread_mutex_unlock(&philo->state_mutex);
+	// 	return ;
+	// }
+	ft_usleep(data, data->time_to_eat);
 	release_forks(philo);
 }
 
@@ -148,12 +148,10 @@ void	*philosopher_routine(void *arg)
 	while (!get_stop_simulation(data))
 	{
 		eat(data, philo);
-		if (get_stop_simulation(data))
-			return (NULL);
+		pthread_mutex_lock(&philo->state_mutex);
+		pthread_mutex_unlock(&philo->state_mutex);
 		print_status(data, philo, "is sleeping");
 		ft_usleep(data, data->time_to_sleep);
-		if (get_stop_simulation(data))
-			return (NULL);
 		print_status(data, philo, "is thinking");
 	}
 	return (NULL);
