@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 12:56:44 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 13:14:00 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,17 +47,14 @@ int have_they_all_eat_necessary(t_data *data)
     {
         if (get_number_of_time_he_eat(memo)
             < get_all_eat_necessary(data))
-        {
             return (0);
-        }
         memo = memo->next;
+		ft_usleep(data, 1000);
         i++;
     }
     set_stop_simulation(data, 1);
     return (1);
 }
-
-
 
 void	*verif_eat_limit(void *arg)
 {
@@ -68,6 +65,7 @@ void	*verif_eat_limit(void *arg)
 		return (NULL);
 	while (get_stop_simulation(data) != 1)
 	{
+		ft_usleep(data, 1000);
 		if (have_they_all_eat_necessary(data) == 1)
 			return (NULL);
 	}
@@ -112,6 +110,7 @@ void	release_forks(t_philosophers *philo)
 	pthread_mutex_unlock(philo->left_fork);
 	pthread_mutex_unlock(philo->right_fork);
 }
+
 void eat(t_data *data, t_philosophers *philo)
 {
     pthread_mutex_lock(&philo->state_mutex);
