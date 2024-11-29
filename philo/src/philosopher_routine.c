@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 12:04:43 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 12:56:44 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,14 +45,11 @@ int have_they_all_eat_necessary(t_data *data)
     i = 0;
     while (i < data->number_of_philosophers)
     {
-        pthread_mutex_lock(&memo->state_mutex);
         if (get_number_of_time_he_eat(memo)
             < get_all_eat_necessary(data))
         {
-            pthread_mutex_unlock(&memo->state_mutex);
             return (0);
         }
-        pthread_mutex_unlock(&memo->state_mutex);
         memo = memo->next;
         i++;
     }

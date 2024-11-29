@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/11 12:02:57 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 10:39:32 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 12:17:21 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,7 +61,6 @@ void verif_threads(t_data *data)
         printf("Error: Failed to create thread\n");
         return;
     }
-
     while (!get_stop_simulation(data))
     {
         philo = data->philosophers;

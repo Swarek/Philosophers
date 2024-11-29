@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/17 19:09:52 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 02:46:38 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 12:16:14 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,7 +110,6 @@ static t_philosophers	*init_philosophers(t_data *data)
     head = create_philosopher(1, data);
     if (!head)
         return (NULL);
-    printf("Philosopher %d created at %p with state_mutex at %p\n", head->id, (void*)head, (void*)&head->state_mutex);
     current = head;
     i = 1;
     while (i < data->number_of_philosophers)
@@ -121,7 +120,6 @@ static t_philosophers	*init_philosophers(t_data *data)
             free_philosophers(head, i);
             return (NULL);
         }
-        printf("Philosopher %d created at %p with state_mutex at %p\n", current->next->id, (void*)current->next, (void*)&current->next->state_mutex);
         current->next->prev = current;
         current = current->next;
         i++;
