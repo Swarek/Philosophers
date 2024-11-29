@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 03:05:08 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 10:13:15 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,39 +77,6 @@ void	*verif_eat_limit(void *arg)
 	return (NULL);
 }
 
-int	verif_last_meal_neighbour(t_philosophers *philo)
-{
-	int	result;
-	int	id1 = philo->id;
-	int	id2 = philo->next->id;
-	int	id3 = philo->prev->id;
-
-	// Acquérir les mutex dans l'ordre croissant des IDs pour éviter les deadlocks
-	if (id1 < id2 && id1 < id3) {
-		pthread_mutex_lock(&philo->state_mutex);
-		pthread_mutex_lock(id2 < id3 ? &philo->next->state_mutex : &philo->prev->state_mutex);
-		pthread_mutex_lock(id2 < id3 ? &philo->prev->state_mutex : &philo->next->state_mutex);
-	} else if (id2 < id1 && id2 < id3) {
-		pthread_mutex_lock(&philo->next->state_mutex);
-		pthread_mutex_lock(id1 < id3 ? &philo->state_mutex : &philo->prev->state_mutex);
-		pthread_mutex_lock(id1 < id3 ? &philo->prev->state_mutex : &philo->state_mutex);
-	} else {
-		pthread_mutex_lock(&philo->prev->state_mutex);
-		pthread_mutex_lock(id1 < id2 ? &philo->state_mutex : &philo->next->state_mutex);
-		pthread_mutex_lock(id1 < id2 ? &philo->next->state_mutex : &philo->state_mutex);
-	}
-
-	result = (philo->last_meal_time > philo->next->last_meal_time
-		|| philo->last_meal_time > philo->prev->last_meal_time);
-
-	// Libérer les mutex dans l'ordre inverse de leur acquisition
-	pthread_mutex_unlock(&philo->state_mutex);
-	pthread_mutex_unlock(&philo->next->state_mutex);
-	pthread_mutex_unlock(&philo->prev->state_mutex);
-
-	return (result);
-}
-
 void	take_forks(t_data *data, t_philosophers *philo)
 {
 	pthread_mutex_t	*first_fork;
@@ -121,11 +88,11 @@ void	take_forks(t_data *data, t_philosophers *philo)
 	right_fork_id = philo->id % data->number_of_philosophers;
 	if (data->number_of_philosophers == 1)
 	{
-		pthread_mutex_lock(philo->left_fork);
 		print_status(data, philo, "has taken a fork");
 		return ;
 	}
-	if (verif_last_meal_neighbour(philo))
+	if (get_last_meal(philo) > get_last_meal(philo->next)
+		|| get_last_meal(philo) > get_last_meal(philo->prev))
 		ft_usleep(data, 50);
 	if (left_fork_id < right_fork_id)
 	{
@@ -150,16 +117,21 @@ void	release_forks(t_philosophers *philo)
 }
 void eat(t_data *data, t_philosophers *philo)
 {
-    if (get_stop_simulation(data)
-        || (get_number_of_time_he_eat(philo) >= get_all_eat_necessary(data)
-            && get_all_eat_necessary(data) != -1))
+    pthread_mutex_lock(&philo->state_mutex);
+    if (get_stop_simulation(data) || 
+        (philo->number_of_time_he_eat >= get_all_eat_necessary(data) 
+        && get_all_eat_necessary(data) != -1))
+    {
+        pthread_mutex_unlock(&philo->state_mutex);
         return;
+    }
+    pthread_mutex_unlock(&philo->state_mutex);
 
     take_forks(data, philo);
 
     if (data->number_of_philosophers == 1)
     {
-        pthread_mutex_unlock(philo->left_fork);
+        release_forks(philo);
         return;
     }
 
