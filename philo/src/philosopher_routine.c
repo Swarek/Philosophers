@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 10:13:15 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 12:04:43 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,10 +130,7 @@ void eat(t_data *data, t_philosophers *philo)
     take_forks(data, philo);
 
     if (data->number_of_philosophers == 1)
-    {
-        release_forks(philo);
         return;
-    }
 
     pthread_mutex_lock(&philo->state_mutex);
     if (!get_stop_simulation(data))

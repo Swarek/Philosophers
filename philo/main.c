@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/05 01:05:02 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 10:41:02 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 11:59:18 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,52 +18,32 @@
 
 void cleanup(t_data *data)
 {
-    t_philosophers *philo;
     int i;
 
-    // Attendre que tous les threads se terminent
-    if (data->threads)
+    // Attendre que tous les threads des philosophes se terminent
+    for (i = 0; i < data->number_of_philosophers; i++)
     {
-        i = 0;
-        while (i < data->number_of_philosophers)
-        {
-            pthread_join(data->threads[i], NULL);
-            i++;
-        }
-        free(data->threads);
+        pthread_join(data->threads[i], NULL);
     }
 
-    // Destruction des mutex
-    if (data->forks)
+    // Détruire les mutex des fourchettes
+    for (i = 0; i < data->number_of_philosophers; i++)
     {
-        i = 0;
-        while (i < data->number_of_philosophers)
-        {
-            pthread_mutex_destroy(&data->forks[i]);
-            i++;
-        }
-        free(data->forks);
+        pthread_mutex_destroy(&data->forks[i]);
     }
 
-    // Nettoyage des philosophes
-    if (data->philosophers)
-    {
-        philo = data->philosophers;
-        i = 0;
-        while (i < data->number_of_philosophers)
-        {
-            pthread_mutex_destroy(&philo->state_mutex);
-            philo = philo->next;
-            i++;
-        }
-        free_philosophers(data->philosophers, data->number_of_philosophers);
-    }
-
+    // Détruire les mutex dans la structure data
     pthread_mutex_destroy(&data->print_mutex);
     pthread_mutex_destroy(&data->stop_mutex);
     pthread_mutex_destroy(&data->fork_mutex);
+
+    // Libérer les ressources
+    free_philosophers(data->philosophers, data->number_of_philosophers);
+    free(data->forks);
+    free(data->threads);
     free(data);
 }
+
 
 
 
