@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/07 14:49:21 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/30 02:03:32 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/30 02:08:55 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,4 +65,10 @@ void	print_status(t_data *data, t_philosophers *philo, char *status)
 		printf("%ld %d %s\n", get_timestamp() - data->start_time, philo->id,
 			status);
 	pthread_mutex_unlock(&data->print_mutex);
+}
+
+void	release_forks(t_philosophers *philo)
+{
+	pthread_mutex_unlock(philo->left_fork);
+	pthread_mutex_unlock(philo->right_fork);
 }

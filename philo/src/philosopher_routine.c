@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/30 02:07:45 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/30 02:08:49 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,12 +75,6 @@ void	take_forks(t_data *data, t_philosophers *philo)
 	print_status(data, philo, "has taken a fork");
 	pthread_mutex_lock(second_fork);
 	print_status(data, philo, "has taken a fork");
-}
-
-void	release_forks(t_philosophers *philo)
-{
-	pthread_mutex_unlock(philo->left_fork);
-	pthread_mutex_unlock(philo->right_fork);
 }
 
 void	eat(t_data *data, t_philosophers *philo)
