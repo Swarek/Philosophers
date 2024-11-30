@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/17 19:09:52 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/29 12:16:14 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 23:08:42 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,21 +37,6 @@ static pthread_mutex_t	*init_mutex_fork(int number_of_philosophers)
 		i++;
 	}
 	return (forks);
-}
-
-static int	parse_int(const char *str)
-{
-	int	value;
-
-	value = 0;
-	while (*str)
-	{
-		if (*str < '0' || *str > '9')
-			return (-1);
-		value = value * 10 + (*str - '0');
-		str++;
-	}
-	return (value);
 }
 
 static t_data	*init_data(int argc, char **argv)
@@ -103,60 +88,56 @@ static t_philosophers	*create_philosopher(int id, t_data *data)
 
 static t_philosophers	*init_philosophers(t_data *data)
 {
-    t_philosophers	*head;
-    t_philosophers	*current;
-    int				i;
+	t_philosophers	*head;
+	t_philosophers	*current;
+	int				i;
 
-    head = create_philosopher(1, data);
-    if (!head)
-        return (NULL);
-    current = head;
-    i = 1;
-    while (i < data->number_of_philosophers)
-    {
-        current->next = create_philosopher(i + 1, data);
-        if (!current->next)
-        {
-            free_philosophers(head, i);
-            return (NULL);
-        }
-        current->next->prev = current;
-        current = current->next;
-        i++;
-    }
-    current->next = head;
-    head->prev = current;
-    data->philosophers = head;
-    return (head);
+	head = create_philosopher(1, data);
+	if (!head)
+		return (NULL);
+	current = head;
+	i = 1;
+	while (i < data->number_of_philosophers)
+	{
+		current->next = create_philosopher(i + 1, data);
+		if (!current->next)
+		{
+			free_philosophers(head, i);
+			return (NULL);
+		}
+		current->next->prev = current;
+		current = current->next;
+		i++;
+	}
+	current->next = head;
+	head->prev = current;
+	data->philosophers = head;
+	return (head);
 }
 
-
-int create_philosopher_threads(t_data *data)
+int	create_philosopher_threads(t_data *data)
 {
-    t_philosophers    *philo;
-    int                i;
+	t_philosophers	*philo;
+	int				i;
 
-    data->threads = malloc(sizeof(pthread_t) * data->number_of_philosophers);
-    if (!data->threads)
-        return (1);
-    philo = data->philosophers;
-    i = -1;
-    while (++i < data->number_of_philosophers)
-    {
-        if (pthread_create(&data->threads[i], NULL, philosopher_routine, philo) != 0)
-        {
-            printf("Error: Failed to create philosopher thread\n");
-            free(data->threads);
-            return (1);
-        }
-        philo = philo->next;
-    }
-    // Do not create the verification thread here
-    return (0);
+	data->threads = malloc(sizeof(pthread_t) * data->number_of_philosophers);
+	if (!data->threads)
+		return (1);
+	philo = data->philosophers;
+	i = -1;
+	while (++i < data->number_of_philosophers)
+	{
+		if (pthread_create(&data->threads[i], NULL, philosopher_routine,
+				philo) != 0)
+		{
+			printf("Error: Failed to create philosopher thread\n");
+			free(data->threads);
+			return (1);
+		}
+		philo = philo->next;
+	}
+	return (0);
 }
-
-
-
 
 t_data	*init_structures(int argc, char **argv)
 {

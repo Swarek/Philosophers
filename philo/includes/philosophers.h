@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/14 15:22:47 by dmathis           #+#    #+#             */
-/*   Updated: 2024/11/29 03:03:36 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/29 23:08:57 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,4 +82,6 @@ void	*verif_eat_limit(void *arg);
 long	get_last_meal(t_philosophers *philo);
 int	get_all_eat_necessary(t_data *data);
 int get_number_of_time_he_eat(t_philosophers *philo);
+int	parse_int(const char *str);
+
 #endif
