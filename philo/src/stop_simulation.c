@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/11 12:02:57 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/30 02:16:44 by mblanc           ###   ########.fr       */
+/*   Updated: 2024/11/30 02:21:18 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,4 +105,6 @@ void	verif_threads(t_data *data)
 		pthread_join(data->threads[i], NULL);
 		i++;
 	}
+	free(data->threads);
+	data->threads = NULL;
 }
