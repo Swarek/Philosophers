@@ -6,7 +6,7 @@
 /*   By: mblanc <mblanc@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/04 11:50:05 by mblanc            #+#    #+#             */
-/*   Updated: 2024/11/30 02:08:49 by mblanc           ###   ########.fr       */
+/*   Updated: 2025/01/19 07:54:00 by mblanc           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,9 +58,6 @@ void	take_forks(t_data *data, t_philosophers *philo)
 		print_status(data, philo, "has taken a fork");
 		return ;
 	}
-	if (get_last_meal(philo) > get_last_meal(philo->next)
-		|| get_last_meal(philo) > get_last_meal(philo->prev))
-		ft_usleep(data, 50);
 	if (philo->id - 1 < philo->id % data->number_of_philosophers)
 	{
 		first_fork = philo->left_fork;
@@ -96,13 +93,14 @@ void	eat(t_data *data, t_philosophers *philo)
 	{
 		philo->last_meal_time = get_timestamp();
 		philo->number_of_time_he_eat++;
-		print_status(data, philo, "is eating");
 		pthread_mutex_unlock(&philo->state_mutex);
 		ft_usleep(data, data->time_to_eat);
+		print_status(data, philo, "is eating");
 	}
 	else
 		pthread_mutex_unlock(&philo->state_mutex);
 	release_forks(philo);
+	ft_usleep(data, 2);
 }
 
 void	*philosopher_routine(void *arg)
